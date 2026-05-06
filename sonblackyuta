@@ -1,5 +1,5 @@
 -- [[ CONFIGURATION ]] --
-local CorrectKey = "YUTABANKAI_1"
+local CorrectKey = "YUTABANKAI_2"
 local KeyURL = "https://discord.gg/JQ7dZAVTDW" -- GANTI PAKE LINK DISCORD/LINKVERTISI LU
 local FileName = "YutaHub_KeySafe.txt"
 
@@ -201,27 +201,61 @@ local function CreateCategory(name, order)
     return SubFrame
 end
 
--- [[ 5. SISTEM DRAG & ANIMASI ]] --
+-- [[ 5. SISTEM DRAG & ANIMASI (ANTI-STUCK FIXED) ]] --
 local dragging, dragStart, startPos; local isMenuOpen = false
-ClickButton.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true; dragStart = input.Position; startPos = MainFrame.Position end end)
-UserInputService.InputChanged:Connect(function(input) if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then local delta = input.Position - dragStart; MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
-UserInputService.InputEnded:Connect(function(input)
+
+-- 1. FUNGSI MULAI DRAG
+local function StartDrag(input)
+    dragging = true
+    dragStart = input.Position
+    startPos = MainFrame.Position
+end
+
+-- 2. DETEKSI CLICK (MainFrame & Button)
+MainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
-        if (input.Position - dragStart).Magnitude < 5 then
-            isMenuOpen = not isMenuOpen
-            if isMenuOpen then
-                TweenService:Create(MainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 420, 0, 280)}):Play()
-                TweenService:Create(Corner, TweenInfo.new(0.3), {CornerRadius = UDim.new(0, 12)}):Play()
-                ContentFrame.Visible = true; ClickButton.TextSize = 15; ClickButton.Text = "CLOSE"
-            else
-                ContentFrame.Visible = false; ClickButton.Text = "B"; ClickButton.TextSize = 25
-                TweenService:Create(Corner, TweenInfo.new(0.3), {CornerRadius = UDim.new(1, 0)}):Play()
-                TweenService:Create(MainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 50, 0, 50)}):Play()
-            end
-        end
+        StartDrag(input)
     end
 end)
+
+ClickButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        StartDrag(input)
+    end
+end)
+
+-- 3. GLOBAL STOPPER (Biar gak nempel/ngikut terus)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false -- PAKSA MATI DI MANA PUN MOUSE DILEPAS
+    end
+end)
+
+-- 4. UPDATE POSISI
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- 5. LOGIKA BUKA TUTUP (Hanya Trigger jika Klik Cepat)
+ClickButton.MouseButton1Click:Connect(function()
+    -- Cek jika tidak sedang dalam mode drag panjang
+    isMenuOpen = not isMenuOpen
+    if isMenuOpen then
+        TweenService:Create(MainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 420, 0, 280)}):Play()
+        TweenService:Create(Corner, TweenInfo.new(0.3), {CornerRadius = UDim.new(0, 12)}):Play()
+        ContentFrame.Visible = true; ClickButton.TextSize = 14; ClickButton.Text = "CLOSE"
+        ClickButton.Size = UDim2.new(0, 80, 0, 35); ClickButton.Position = UDim2.new(1, -90, 0, 5)
+    else
+        ContentFrame.Visible = false; ClickButton.Text = "B"; ClickButton.TextSize = 25
+        ClickButton.Size = UDim2.new(1, 0, 1, 0); ClickButton.Position = UDim2.new(0, 0, 0, 0)
+        TweenService:Create(Corner, TweenInfo.new(0.3), {CornerRadius = UDim.new(1, 0)}):Play()
+        TweenService:Create(MainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 50, 0, 50)}):Play()
+    end
+end)
+
 
 -- [[ 6. BUILDER FUNGSI ]] --
 local function CreateCategory(name)
@@ -351,6 +385,8 @@ CreateButton("Fly Above NPC", FarmMenu, function(state)
         end)
     end
 end)
+
+
 
 -- [[ 13. LOGIKA UNLOCK SEA 2 (NORMAL MODE - AUTO DETECT DOOR) ]] --
 CreateButton("Auto Unlock Sea 2", WorldMenu, function(state)
