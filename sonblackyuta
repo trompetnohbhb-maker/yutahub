@@ -1,4 +1,64 @@
-local Players = game:GetService("Players")
+-- [[ CONFIGURATION ]] --
+local CorrectKey = "YUTABANKAI_1"
+local KeyURL = "https://discord.gg/JQ7dZAVTDW" -- GANTI PAKE LINK DISCORD/LINKVERTISI LU
+local FileName = "YutaHub_KeySafe.txt"
+
+-- [[ KEY SYSTEM UI ]] --
+local CoreGui = game:GetService("CoreGui")
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
+ScreenGui.Name = "YutaKeySystem"
+ScreenGui.Enabled = false -- Sembunyi dulu buat pengecekan
+
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 350, 0, 200)
+Main.Position = UDim2.new(0.5, -175, 0.5, -100)
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
+local Stroke = Instance.new("UIStroke", Main)
+Stroke.Color = Color3.fromRGB(180, 0, 0)
+Stroke.Thickness = 2
+
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, 0, 0, 50)
+Title.Text = "YUTA HUB | KEY SYSTEM"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 20
+Title.BackgroundTransparency = 1
+
+local Box = Instance.new("TextBox", Main)
+Box.Size = UDim2.new(0, 280, 0, 40)
+Box.Position = UDim2.new(0.5, -140, 0.35, 0)
+Box.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Box.PlaceholderText = "Enter Key..."
+Box.Text = ""
+Box.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", Box)
+
+local CheckBtn = Instance.new("TextButton", Main)
+CheckBtn.Size = UDim2.new(0, 135, 0, 40)
+CheckBtn.Position = UDim2.new(0.1, 0, 0.65, 0)
+CheckBtn.Text = "CHECK KEY"
+CheckBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+CheckBtn.TextColor3 = Color3.new(1,1,1)
+CheckBtn.Font = Enum.Font.SourceSansBold
+Instance.new("UICorner", CheckBtn)
+
+local GetBtn = Instance.new("TextButton", Main)
+GetBtn.Size = UDim2.new(0, 135, 0, 40)
+GetBtn.Position = UDim2.new(0.55, 0, 0.65, 0)
+GetBtn.Text = "GET KEY"
+GetBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+GetBtn.TextColor3 = Color3.new(1,1,1)
+GetBtn.Font = Enum.Font.SourceSansBold
+Instance.new("UICorner", GetBtn)
+
+-- [[ LOGIKA UTAMA ]] --
+
+local function Start_YutaHub()
+    print("Key Correct! Starting Yuta Hub...")
+    -- [[ TEMPEL SEMUA KODE UTAMA LU DI BAWAH INI ]] --
+    local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -490,3 +550,41 @@ LocalPlayer.Idled:Connect(function()
 end)
 
 print("⚡ YUTA HUB BANKAI: FULL READY ⚡")
+
+    
+end
+
+-- 1. FUNGSI GET KEY (COPY LINK)
+GetBtn.MouseButton1Click:Connect(function()
+    setclipboard(KeyURL) -- Nyalin link ke HP/PC user
+    GetBtn.Text = "LINK COPIED!"
+    task.wait(2)
+    GetBtn.Text = "GET KEY"
+end)
+
+-- 2. FUNGSI CHECK KEY
+CheckBtn.MouseButton1Click:Connect(function()
+    if Box.Text == CorrectKey then
+        writefile(FileName, Box.Text) -- Simpen key biar besok gratis
+        ScreenGui:Destroy()
+        Start_YutaHub()
+    else
+        Box.Text = ""
+        Box.PlaceholderText = "INVALID KEY!"
+        Box.PlaceholderColor3 = Color3.new(1, 0, 0)
+    end
+end)
+
+-- 3. CEK APAKAH SUDAH ADA KEY TERSIMPAN
+local function Init()
+    if isfile(FileName) then
+        local saved = readfile(FileName)
+        if saved == CorrectKey then
+            Start_YutaHub()
+            return
+        end
+    end
+    ScreenGui.Enabled = true -- Munculin UI kalau belum ada key
+end
+
+Init()
