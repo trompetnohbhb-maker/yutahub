@@ -1,0 +1,492 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+-- [[ 1. KONEKSI REMOTE ]] --
+local Net = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Net")
+local RegisterAttack = Net:WaitForChild("RE/RegisterAttack")
+local RegisterHit = Net:WaitForChild("RE/RegisterHit")
+local CommF = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_")
+
+-- [[ 2. STATUS GLOBAL ]] --
+_G.AA = false
+_G.Fly = false
+_G.Quest = false
+_G.Magnetic = false
+_G.AutoHaki = false
+local CurrentEnemy = "" 
+
+-- [[ 3. DATA QUEST LENGKAP ]] --
+local function GetQuestData()
+    local lv = LocalPlayer.Data.Level.Value
+    if lv < 700 then
+        if lv < 10 then return "BanditQuest1", 1, "Bandit"
+        elseif lv < 15 then return "MonkeyQuest1", 1, "Monkey"
+        elseif lv < 30 then return "MonkeyQuest1", 2, "Gorilla"
+        elseif lv < 40 then return "PirateIslandQuest", 1, "Pirate"
+        elseif lv < 60 then return "PirateIslandQuest", 2, "Brute"
+        elseif lv < 75 then return "DesertIslandQuest", 1, "Desert Bandit"
+        elseif lv < 90 then return "DesertIslandQuest", 2, "Desert Officer"
+        elseif lv < 120 then return "SnowIslandQuest", 1, "Snow Bandit"
+        elseif lv < 150 then return "SnowIslandQuest", 2, "Snowman"
+        elseif lv < 175 then return "MarineTreeQuest", 1, "Chief Petty Officer"
+        elseif lv < 190 then return "MarineTreeQuest", 2, "Vice Admiral"
+        elseif lv < 210 then return "SkyQuest", 1, "Sky Bandit"
+        elseif lv < 250 then return "SkyQuest", 2, "Dark Master"
+        elseif lv < 275 then return "PrisonQuest", 1, "Prisoner"
+        elseif lv < 300 then return "PrisonQuest", 2, "Dangerous Prisoner"
+        elseif lv < 330 then return "MagmaQuest", 1, "Military Soldier"
+        elseif lv < 425 then return "MagmaQuest", 2, "Military Spy"
+        elseif lv < 450 then return "FishmanQuest", 1, "Fishman Warrior"
+        elseif lv < 575 then return "FishmanQuest", 2, "Fishman Commando"
+        elseif lv < 625 then return "SkyExp1Quest", 1, "God's Guard"
+        else return "SkyExp1Quest", 2, "Shanda" end
+    elseif lv < 1500 then
+        if lv < 725 then return "Area1Quest", 1, "Raider"
+        elseif lv < 775 then return "Area1Quest", 2, "Mercenary"
+        elseif lv < 800 then return "Area2Quest", 1, "Swan Pirate"
+        elseif lv < 875 then return "Area2Quest", 2, "Factory Worker"
+        elseif lv < 900 then return "MarineQuest2", 1, "Marine Lieutenant"
+        elseif lv < 950 then return "MarineQuest2", 2, "Marine Captain"
+        elseif lv < 975 then return "ZombieQuest", 1, "Zombie"
+        elseif lv < 1050 then return "ZombieQuest", 2, "Vampire"
+        elseif lv < 1075 then return "SnowMountainQuest", 1, "Snow Trooper"
+        elseif lv < 1125 then return "SnowMountainQuest", 2, "Winter Warrior"
+        elseif lv < 1175 then return "IceIslandQuest", 1, "Cold Soldier"
+        elseif lv < 1250 then return "IceIslandQuest", 2, "Arctic Warrior"
+        elseif lv < 1275 then return "LavaQuest", 1, "Fire Soldier"
+        elseif lv < 1350 then return "LavaQuest", 2, "Magma Ninja"
+        elseif lv < 1425 then return "FishmanQuest2", 1, "Fishman Warrior"
+        else return "FishmanQuest2", 2, "Fishman Commando" end
+    else
+        if lv < 1575 then return "Area1Quest", 1, "Forest Pirate"
+        elseif lv < 1625 then return "Area1Quest", 2, "Mythical Pirate"
+        elseif lv < 1650 then return "Area2Quest", 1, "Jungle Pirate"
+        elseif lv < 1725 then return "Area2Quest", 2, "Musketeer Pirate"
+        elseif lv < 1775 then return "FloatingTurtleQuest", 1, "Fishman Raider"
+        elseif lv < 1825 then return "FloatingTurtleQuest", 2, "Fishman Captain"
+        elseif lv < 1900 then return "FloatingTurtleQuest", 3, "Forest Elf"
+        elseif lv < 1975 then return "FloatingTurtleQuest", 4, "Ogre"
+        elseif lv < 2025 then return "HauntedQuest1", 1, "Reborn Skeleton"
+        elseif lv < 2075 then return "HauntedQuest1", 2, "Living Zombie"
+        elseif lv < 2125 then return "HauntedQuest2", 1, "Demonic Soul"
+        elseif lv < 2200 then return "HauntedQuest2", 2, "Posessed Mummy"
+        elseif lv < 2275 then return "IceCreamIslandQuest", 1, "Ice Cream Chef"
+        elseif lv < 2325 then return "IceCreamIslandQuest", 2, "Ice Cream Cone"
+        elseif lv < 2375 then return "CakeQuest1", 1, "Cake Guard"
+        elseif lv < 2425 then return "CakeQuest1", 2, "Cake Cook"
+        elseif lv < 2475 then return "CakeQuest2", 1, "Head Baker"
+        elseif lv < 2525 then return "CakeQuest2", 2, "Cookie Homie"
+        elseif lv < 2575 then return "AegisCurQuest", 1, "Aegis Cur"
+        elseif lv < 2675 then return "GasQuest", 1, "Gas Worker"
+        else return "ElizaQuest", 1, "Eliza" end
+    end
+end
+
+-- [[ 4. SETUP UI BANKAI (FIXED ORDER) ]] --
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+if PlayerGui:FindFirstChild("YutaHub_Bankai") then PlayerGui.YutaHub_Bankai:Destroy() end
+
+local ScreenGui = Instance.new("ScreenGui", PlayerGui); ScreenGui.Name = "YutaHub_Bankai"; ScreenGui.ResetOnSpawn = false
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 50, 0, 50); MainFrame.Position = UDim2.new(0.5, -25, 0.1, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15); MainFrame.BorderSizePixel = 0; MainFrame.Active = true; MainFrame.ClipsDescendants = true
+local Corner = Instance.new("UICorner", MainFrame); Corner.CornerRadius = UDim.new(1, 0)
+local Stroke = Instance.new("UIStroke", MainFrame); Stroke.Color = Color3.fromRGB(180, 0, 0); Stroke.Thickness = 2
+
+local ClickButton = Instance.new("TextButton", MainFrame)
+ClickButton.Size = UDim2.new(0, 50, 0, 50); ClickButton.BackgroundTransparency = 1; ClickButton.Text = "B"; ClickButton.TextColor3 = Color3.new(1,1,1); ClickButton.Font = Enum.Font.SourceSansBold; ClickButton.TextSize = 25
+
+local ContentFrame = Instance.new("ScrollingFrame", MainFrame)
+ContentFrame.Size = UDim2.new(1, -20, 1, -70); ContentFrame.Position = UDim2.new(0, 10, 0, 60); ContentFrame.BackgroundTransparency = 1; ContentFrame.Visible = false; ContentFrame.ScrollBarThickness = 0
+
+-- FIX: Tambahin SortOrder agar nurut sama nomor urut (LayoutOrder)
+local List = Instance.new("UIListLayout", ContentFrame)
+List.Padding = UDim.new(0, 8)
+List.HorizontalAlignment = Enum.HorizontalAlignment.Center
+List.SortOrder = Enum.SortOrder.LayoutOrder 
+
+-- [[ 5. FUNGSI KATEGORI DENGAN NOMOR URUT ]] --
+local function CreateCategory(name, order)
+    local CatBtn = Instance.new("TextButton", ContentFrame)
+    CatBtn.Size = UDim2.new(0.95, 0, 0, 35)
+    CatBtn.LayoutOrder = order -- Biar gak nyalip ke atas
+    CatBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    CatBtn.Text = "▼ " .. name
+    CatBtn.TextColor3 = Color3.new(1,1,1)
+    CatBtn.Font = Enum.Font.SourceSansBold
+    CatBtn.TextSize = 14
+    Instance.new("UICorner", CatBtn).CornerRadius = UDim.new(0, 6)
+
+    local SubFrame = Instance.new("Frame", ContentFrame)
+    SubFrame.Size = UDim2.new(0.95, 0, 0, 0)
+    SubFrame.BackgroundTransparency = 1
+    SubFrame.ClipsDescendants = true
+    SubFrame.Visible = false
+    SubFrame.LayoutOrder = order + 1 -- Sub-menu selalu di bawah tombol kategorinya
+    local SL = Instance.new("UIListLayout", SubFrame)
+    SL.Padding = UDim.new(0, 5)
+    SL.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    local open = false
+    CatBtn.MouseButton1Click:Connect(function()
+        open = not open
+        SubFrame.Visible = open
+        CatBtn.Text = (open and "▲ " or "▼ ") .. name
+        TweenService:Create(SubFrame, TweenInfo.new(0.3), {Size = open and UDim2.new(0.95, 0, 0, SL.AbsoluteContentSize.Y + 5) or UDim2.new(0.95, 0, 0, 0)}):Play()
+    end)
+    return SubFrame
+end
+
+-- [[ 5. SISTEM DRAG & ANIMASI ]] --
+local dragging, dragStart, startPos; local isMenuOpen = false
+ClickButton.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true; dragStart = input.Position; startPos = MainFrame.Position end end)
+UserInputService.InputChanged:Connect(function(input) if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then local delta = input.Position - dragStart; MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+        if (input.Position - dragStart).Magnitude < 5 then
+            isMenuOpen = not isMenuOpen
+            if isMenuOpen then
+                TweenService:Create(MainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 420, 0, 280)}):Play()
+                TweenService:Create(Corner, TweenInfo.new(0.3), {CornerRadius = UDim.new(0, 12)}):Play()
+                ContentFrame.Visible = true; ClickButton.TextSize = 15; ClickButton.Text = "CLOSE"
+            else
+                ContentFrame.Visible = false; ClickButton.Text = "B"; ClickButton.TextSize = 25
+                TweenService:Create(Corner, TweenInfo.new(0.3), {CornerRadius = UDim.new(1, 0)}):Play()
+                TweenService:Create(MainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 50, 0, 50)}):Play()
+            end
+        end
+    end
+end)
+
+-- [[ 6. BUILDER FUNGSI ]] --
+local function CreateCategory(name)
+    local CatBtn = Instance.new("TextButton", ContentFrame)
+    CatBtn.Size = UDim2.new(0.95, 0, 0, 35); CatBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40); CatBtn.Text = "▼ " .. name; CatBtn.TextColor3 = Color3.new(1,1,1); CatBtn.Font = Enum.Font.SourceSansBold; CatBtn.TextSize = 14
+    Instance.new("UICorner", CatBtn).CornerRadius = UDim.new(0, 6)
+    local SubFrame = Instance.new("Frame", ContentFrame); SubFrame.Size = UDim2.new(0.95, 0, 0, 0); SubFrame.BackgroundTransparency = 1; SubFrame.ClipsDescendants = true; SubFrame.Visible = false
+    local SL = Instance.new("UIListLayout", SubFrame); SL.Padding = UDim.new(0, 5); SL.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    local open = false
+    CatBtn.MouseButton1Click:Connect(function()
+        open = not open; SubFrame.Visible = open; CatBtn.Text = (open and "▲ " or "▼ ") .. name
+        TweenService:Create(SubFrame, TweenInfo.new(0.3), {Size = open and UDim2.new(0.95, 0, 0, SL.AbsoluteContentSize.Y + 5) or UDim2.new(0.95, 0, 0, 0)}):Play()
+    end)
+    return SubFrame
+end
+
+local function CreateButton(name, parent, callback)
+    local btn = Instance.new("TextButton", parent); btn.Size = UDim2.new(0.9, 0, 0, 35); btn.Text = name .. ": OFF"; btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30); btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.SourceSansBold; btn.TextSize = 13
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    local active = false
+    btn.MouseButton1Click:Connect(function()
+        active = not active; btn.Text = name .. ": " .. (active and "ON" or "OFF")
+        btn.BackgroundColor3 = active and Color3.fromRGB(180, 0, 0) or Color3.fromRGB(30, 30, 30)
+        callback(active)
+    end)
+end
+
+-- [[ 7. LOGIKA FITUR ]] --
+task.spawn(function()
+    while task.wait(1) do
+        if _G.AutoHaki then
+            if LocalPlayer.Character and not LocalPlayer.Character:FindFirstChild("HasBuso") then
+                CommF:InvokeServer("Buso")
+            end
+        end
+    end
+end)
+
+-- [[ 8. RAKIT MENU ]] --
+local FarmMenu = CreateCategory("AUTO FARM")
+
+local WorldMenu = CreateCategory("🌊 WORLD UNLOCK")
+
+local StatMenu = CreateCategory("📊 STATS MENU", 30)
+
+
+
+-- [[ 9. AUTO QUEST ]] --
+CreateButton("Auto Quest", FarmMenu, function(state)
+    _G.Quest = state
+    while _G.Quest do
+        pcall(function()
+            local mainGui = LocalPlayer.PlayerGui:FindFirstChild("Main")
+            if mainGui and mainGui:FindFirstChild("Quest") and mainGui.Quest.Visible == false then
+                local qName, qId, enemyName = GetQuestData()
+                CurrentEnemy = enemyName
+                CommF:InvokeServer("StartQuest", qName, qId)
+            end
+        end)
+        task.wait(2)
+    end
+end)
+
+-- [[ 10. AUTO HAKI ]] --
+CreateButton("Auto Haki", FarmMenu, function(state)
+    _G.AutoHaki = state
+    if not state and LocalPlayer.Character:FindFirstChild("HasBuso") then
+        CommF:InvokeServer("Buso")
+    end
+end)
+
+-- [[ 11. AUTO ATTACK ]] --
+CreateButton("Auto Attack", FarmMenu, function(state)
+    _G.AA = state
+    while _G.AA do
+        RunService.Heartbeat:Wait()
+        pcall(function()
+            local t = {}
+            -- Scan musuh dalam radius 120 stud
+            for _, v in pairs(workspace.Enemies:GetChildren()) do
+                if v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                    local myPos = LocalPlayer.Character.HumanoidRootPart.Position
+                    if (v.HumanoidRootPart.Position - myPos).Magnitude < 120 then
+                        table.insert(t, v)
+                    end
+                end
+            end
+            
+            -- Jika ada musuh, langsung hajar massal
+            if #t > 0 then
+                RegisterAttack:FireServer(0)
+                local args = {nil, {}}
+                for i, v in pairs(t) do
+                    if not args[1] then args[1] = v.HumanoidRootPart end
+                    args[2][i] = {v, v.HumanoidRootPart}
+                end
+                RegisterHit:FireServer(unpack(args))
+            end
+        end)
+    end
+end)
+
+-- [[ 12. FITUR FLY NPC + MAGNETIC ]] --
+CreateButton("Fly Above NPC", FarmMenu, function(state)
+    _G.Fly = state
+    while _G.Fly do
+        RunService.Heartbeat:Wait()
+        pcall(function()
+            local myRoot = LocalPlayer.Character.HumanoidRootPart
+            -- Cari musuh berdasarkan CurrentEnemy dari Quest
+            for _, v in pairs(workspace.Enemies:GetChildren()) do
+                if v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 and v.Name:find(CurrentEnemy) then
+                    -- Posisi kita 20 unit di atas musuh
+                    myRoot.CFrame = v.HumanoidRootPart.CFrame * CFrame.new(0, 20, 0)
+                    
+                    -- LOGIKA MAGNETIC: Tarik semua musuh sejenis ke bawah kita
+                    for _, mob in pairs(workspace.Enemies:GetChildren()) do
+                        if mob.Name:find(CurrentEnemy) and mob:FindFirstChild("HumanoidRootPart") then
+                            mob.HumanoidRootPart.CanCollide = false
+                            mob.HumanoidRootPart.CFrame = myRoot.CFrame * CFrame.new(0, -20, 0)
+                            mob.HumanoidRootPart.Velocity = Vector3.zero
+                        end
+                    end
+                    break
+                end
+            end
+        end)
+    end
+end)
+
+-- [[ 13. LOGIKA UNLOCK SEA 2 (NORMAL MODE - AUTO DETECT DOOR) ]] --
+CreateButton("Auto Unlock Sea 2", WorldMenu, function(state)
+    _G.AutoSea2 = state
+    
+    if _G.AutoSea2 then
+        task.spawn(function()
+            -- 1. AMBIL KUNCI (Prison)
+            if not _G.AutoSea2 then return end
+            print("Mengambil kunci dari Military Detective...")
+            TweenTo(CFrame.new(4844, 5, 718)) 
+            task.wait(1)
+            CommF:InvokeServer("FirstAncientQuest")
+            task.wait(2)
+
+            -- 2. KE GUA ES (Frozen Village)
+            if not _G.AutoSea2 then return end
+            print("Menuju Gua di Frozen Village...")
+            TweenTo(CFrame.new(1347, 37, -1325))
+            task.wait(1)
+            
+            -- LOGIKA BUKA PINTU TANPA TAHU NAMA (AUTO SCAN)
+            local key = LocalPlayer.Backpack:FindFirstChild("Key") or LocalPlayer.Character:FindFirstChild("Key")
+            if key then
+                LocalPlayer.Character.Humanoid:EquipTool(key)
+                task.wait(0.5)
+                -- Scan objek pintu di sekitar koordinat gua
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("Part") and (obj.Position - Vector3.new(1347, 37, -1325)).Magnitude < 15 then
+                        firetouchinterest(LocalPlayer.Character.HumanoidRootPart, obj, 0)
+                        firetouchinterest(LocalPlayer.Character.HumanoidRootPart, obj, 1)
+                    end
+                end
+            end
+            task.wait(2)
+
+            -- 3. LAWAN BOSS (Normal Kill)
+            print("Mencari Ice Admiral...")
+            repeat
+                if not _G.AutoSea2 then break end
+                pcall(function()
+                    local boss = workspace.Enemies:FindFirstChild("Ice Admiral")
+                    if boss and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then
+                        -- Posisi 10 unit di atas boss biar aman
+                        LocalPlayer.Character.HumanoidRootPart.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0)
+                        
+                        -- Gunakan Remote Hit Sigma lu
+                        RegisterAttack:FireServer(0)
+                        RegisterHit:FireServer(boss.HumanoidRootPart, {{boss, boss.HumanoidRootPart}})
+                    end
+                end)
+                task.wait()
+            until not workspace.Enemies:FindFirstChild("Ice Admiral") or not _G.AutoSea2
+            
+            print("Ice Admiral kalah!")
+            task.wait(2)
+
+            -- 4. LAPOR & PINDAH SEA
+            print("Kembali ke Prison...")
+            TweenTo(CFrame.new(4844, 5, 718))
+            task.wait(1)
+            CommF:InvokeServer("FirstAncientQuest")
+            task.wait(1)
+
+            print("Menuju Experienced Captain...")
+            TweenTo(CFrame.new(-437, 7, 3960))
+            task.wait(1)
+            
+            print("Pindah ke Sea 2...")
+            CommF:InvokeServer("TravelZou")
+            _G.AutoSea2 = false
+        end)
+    end
+end)
+
+-- [[ 14. LOGIKA UNLOCK SEA 3 ]] --
+CreateButton("Auto Unlock Sea 3", WorldMenu, function(state)
+    _G.AutoSea3 = state
+    
+    if _G.AutoSea3 then
+        task.spawn(function()
+            -- 1. KE COLOSSEUM
+            if not _G.AutoSea3 then return end
+            print("Menuju King Red Head di Colosseum...")
+            TweenTo(CFrame.new(-1430, 7, -2755))
+            task.wait(1)
+            CommF:InvokeServer("RedHeadQuestStart")
+            task.wait(1)
+
+            -- 2. LAWAN RIP_INDRA (BOSS MODE)
+            print("Melawan Rip_Indra (Sistem Auto Damage)...")
+            repeat
+                if not _G.AutoSea3 then break end
+                pcall(function()
+                    -- Scan rip_indra (Myne atau Normal)
+                    local boss = workspace.Enemies:FindFirstChild("rip_indra Myne") or workspace.Enemies:FindFirstChild("rip_indra")
+                    if boss and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then
+                        -- Stay 15 unit di atas boss biar aman dari serangannya
+                        LocalPlayer.Character.HumanoidRootPart.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0)
+                        
+                        -- Gunakan Remote Hit lu
+                        RegisterAttack:FireServer(0)
+                        RegisterHit:FireServer(boss.HumanoidRootPart, {{boss, boss.HumanoidRootPart}})
+                    end
+                end)
+                task.wait()
+                -- Berhenti kalau darah indra tinggal dikit atau kita ke-teleport keluar (cutscene)
+            until not _G.AutoSea3 or (LocalPlayer.Character.HumanoidRootPart.Position - Vector3.new(-1430, 7, -2755)).Magnitude > 300
+            
+            print("Rip_Indra Selesai!")
+            task.wait(3)
+
+            -- 3. KE GREEN ZONE
+            if not _G.AutoSea3 then return end
+            print("Lapor ke Mr. Captain di Green Zone...")
+            TweenTo(CFrame.new(-2104, 38, -3017))
+            task.wait(1)
+            
+            -- 4. PINDAH KE SEA 3
+            print("Pindah ke Sea 3...")
+            CommF:InvokeServer("TravelMain")
+            _G.AutoSea3 = false -- Matikan tombol setelah berhasil
+        end)
+    end
+end)
+
+-- [[ 11. LOGIKA AUTO STATS - FIXED VERSION ]] --
+
+local function GetStatPoint()
+    -- Cek berbagai kemungkinan nama variabel poin di data player
+    return LocalPlayer.Data:FindFirstChild("StatsPoints") or LocalPlayer.Data:FindFirstChild("Points")
+end
+
+local function RaiseStat(statName)
+    -- Pastikan nama stat sesuai dengan yang diterima server Blox Fruit
+    -- Melee, Defense, Sword, Gun, DemonFruit
+    CommF:InvokeServer("AddPoint", statName, 1) -- Kita setor 1 per 1 biar stabil
+end
+
+CreateButton("Auto Melee", StatMenu, function(state)
+    _G.AutoMelee = state
+    while _G.AutoMelee do
+        local pointObj = GetStatPoint()
+        if pointObj and pointObj.Value > 0 then
+            pcall(function()
+                RaiseStat("Melee")
+            end)
+        end
+        task.wait(0.3) -- Sedikit lebih cepat
+    end
+end)
+
+CreateButton("Auto Defense", StatMenu, function(state)
+    _G.AutoDefense = state
+    while _G.AutoDefense do
+        local pointObj = GetStatPoint()
+        if pointObj and pointObj.Value > 0 then
+            pcall(function()
+                RaiseStat("Defense")
+            end)
+        end
+        task.wait(0.3)
+    end
+end)
+
+CreateButton("Auto Sword", StatMenu, function(state)
+    _G.AutoSword = state
+    while _G.AutoSword do
+        local pointObj = GetStatPoint()
+        if pointObj and pointObj.Value > 0 then
+            pcall(function()
+                RaiseStat("Sword")
+            end)
+        end
+        task.wait(0.3)
+    end
+end)
+
+CreateButton("Auto Fruit", StatMenu, function(state)
+    _G.AutoFruit = state
+    while _G.AutoFruit do
+        local pointObj = GetStatPoint()
+        if pointObj and pointObj.Value > 0 then
+            RaiseStat("DemonFruit") -- Nama servernya emang DemonFruit
+        end
+        task.wait(0.3)
+    end
+end)
+
+
+-- [[ FITUR ANTI-AFK ]] --
+local VirtualUser = game:GetService("VirtualUser")
+LocalPlayer.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+    print("YUTA HUB: Anti-AFK Aktif - Menghindari Kick!")
+end)
+
+print("⚡ YUTA HUB BANKAI: FULL READY ⚡")
