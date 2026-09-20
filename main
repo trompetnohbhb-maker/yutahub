@@ -249,6 +249,9 @@ function OX:CreateWindow(cfg)
     if not gui.Parent then gui.Parent = PG end
     Window.ScreenGui = gui
 
+    -- ═══════════════════════════════════════════
+    -- CUSTOM CURSOR (Obsidian-style)
+    -- ═══════════════════════════════════════════
     local OriginalMouseIconEnabled = UIS.MouseIconEnabled
 
     local Cursor = new("Frame", {
@@ -300,20 +303,52 @@ function OX:CreateWindow(cfg)
         Parent = CursorCross,
     })
 
-    local cursorBindName = "OX_CursorBind_" .. tostring(math.random(1, 99999))
-    local function updateCursor()
-        if Window.ShowCustomCursor and Window.Toggled then
-            UIS.MouseIconEnabled = false
-            Cursor.Position = UDim2.fromOffset(Mouse.X, Mouse.Y)
-            Cursor.Visible = true
+    local cursorBindName = "OX_CursorBind_" .. tostring(math.random(1, 999999))
+    local cursorBound = false
+
+    local function cursorRenderStep()
+        if Window.Unloaded then
+            pcall(function() RunService:UnbindFromRenderStep(cursorBindName) end)
+            pcall(function() UIS.MouseIconEnabled = OriginalMouseIconEnabled end)
+            Cursor.Visible = false
+            cursorBound = false
+            return
+        end
+
+        if Window.Toggled then
+            if Window.ShowCustomCursor then
+                UIS.MouseIconEnabled = false
+                Cursor.Position = UDim2.fromOffset(Mouse.X, Mouse.Y)
+                Cursor.Visible = true
+            else
+                UIS.MouseIconEnabled = OriginalMouseIconEnabled
+                Cursor.Visible = false
+            end
         else
             UIS.MouseIconEnabled = OriginalMouseIconEnabled
             Cursor.Visible = false
         end
     end
-    pcall(function()
-        RunService:BindToRenderStep(cursorBindName, Enum.RenderPriority.Last.Value, updateCursor)
-    end)
+
+    local function bindCursor()
+        if cursorBound then return end
+        cursorBound = true
+        pcall(function()
+            RunService:BindToRenderStep(cursorBindName, Enum.RenderPriority.Last.Value, cursorRenderStep)
+        end)
+    end
+
+    local function unbindCursor()
+        if not cursorBound then return end
+        cursorBound = false
+        pcall(function() RunService:UnbindFromRenderStep(cursorBindName) end)
+        pcall(function() UIS.MouseIconEnabled = OriginalMouseIconEnabled end)
+        Cursor.Visible = false
+    end
+
+    bindCursor()
+    Window.BindCursor = bindCursor
+    Window.UnbindCursor = unbindCursor
 
     local function MouseIsOverFrame(Frame, pos)
         pos = pos or Vector2.new(Mouse.X, Mouse.Y)
@@ -548,13 +583,11 @@ function OX:CreateWindow(cfg)
     function Window:SetVisible(v)
         main.Visible = v
         Window.Toggled = v
-        updateCursor()
     end
 
     function Window:Toggle()
         Window.Toggled = not Window.Toggled
         main.Visible = Window.Toggled
-        updateCursor()
     end
 
     local openBtn = new("TextButton", {
@@ -667,8 +700,7 @@ function OX:CreateWindow(cfg)
 
     function Window:Destroy()
         Window.Unloaded = true
-        pcall(function() RunService:UnbindFromRenderStep(cursorBindName) end)
-        pcall(function() UIS.MouseIconEnabled = OriginalMouseIconEnabled end)
+        unbindCursor()
         for _, c in ipairs(Window.Signals) do
             if c and c.Connected then c:Disconnect() end
         end
@@ -903,9 +935,25 @@ function OX:CreateWindow(cfg)
         local top = display.Parent
         if not top then return end
 
+        display.Position = UDim2.new(1, -68, 0.5, 0)
+        display.Size = UDim2.fromOffset(110, 21)
+
+        new("TextLabel", {
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -42, 0.5, 0),
+            Size = UDim2.fromOffset(14, 14),
+            BackgroundTransparency = 1,
+            Text = "v",
+            Font = Enum.Font.GothamBold,
+            TextSize = 12,
+            TextColor3 = T.Dim,
+            ZIndex = 4,
+            Parent = top,
+        })
+
         local popupBtn = new("TextButton", {
             AnchorPoint = Vector2.new(1, 0.5),
-            Position = UDim2.new(1, -40, 0.5, 0),
+            Position = UDim2.new(1, -20, 0.5, 0),
             Size = UDim2.fromOffset(18, 18),
             BackgroundColor3 = T.Elem,
             Text = "+",
@@ -918,19 +966,9 @@ function OX:CreateWindow(cfg)
         })
         corner(popupBtn, 4); stroke(popupBtn, T.Stroke, 1)
 
-        popupBtn.MouseEnter:Connect(function()
-            tween(popupBtn, {BackgroundColor3 = T.Sel}, 0.1)
-        end)
-        popupBtn.MouseLeave:Connect(function()
-            tween(popupBtn, {BackgroundColor3 = T.Elem}, 0.1)
-        end)
-
-        popupBtn.MouseButton1Click:Connect(function()
-            Window:ShowDropdownPopup(dd)
-        end)
-
-        display.Position = UDim2.new(1, -42, 0.5, 0)
-        display.Size = UDim2.fromOffset(110, 21)
+        popupBtn.MouseEnter:Connect(function() tween(popupBtn, {BackgroundColor3 = T.Sel}, 0.1) end)
+        popupBtn.MouseLeave:Connect(function() tween(popupBtn, {BackgroundColor3 = T.Elem}, 0.1) end)
+        popupBtn.MouseButton1Click:Connect(function() Window:ShowDropdownPopup(dd) end)
     end
 
     function Window:AddTab(name, icon)
