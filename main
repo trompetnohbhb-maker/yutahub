@@ -152,9 +152,7 @@ function ConfigManager.SetMap(mapName)
     if mapName == "" then mapName = DEFAULT_MAP end
     ConfigManager.MapName = mapName
     local path = CONFIG_ROOT .. "/" .. mapName
-    if makefolder and not isfolder(path) then
-        pcall(makefolder, path)
-    end
+    if makefolder and not isfolder(path) then pcall(makefolder, path) end
     ConfigManager.RefreshList()
 end
 
@@ -176,19 +174,14 @@ function ConfigManager.Save(configName)
     if not writefile then return false, "no writefile" end
     local folder = ConfigManager.GetFolder()
     if makefolder and not isfolder(folder) then pcall(makefolder, folder) end
-
     local data = {}
     for flag, entry in pairs(ConfigManager.Registry) do
         local ok, value = pcall(entry.get)
-        if ok and value ~= nil then
-            data[flag] = value
-        end
+        if ok and value ~= nil then data[flag] = value end
     end
-
     local ok, err = pcall(function()
         writefile(ConfigManager.GetPath(configName), HttpService:JSONEncode(data))
     end)
-
     if ok then ConfigManager.RefreshList() end
     return ok, err
 end
@@ -197,16 +190,11 @@ function ConfigManager.Load(configName)
     if not isfile then return false end
     local path = ConfigManager.GetPath(configName)
     if not isfile(path) then return false end
-    local ok, data = pcall(function()
-        return HttpService:JSONDecode(readfile(path))
-    end)
+    local ok, data = pcall(function() return HttpService:JSONDecode(readfile(path)) end)
     if not ok or type(data) ~= "table" then return false end
-
     for flag, value in pairs(data) do
         local entry = ConfigManager.Registry[flag]
-        if entry then
-            pcall(entry.set, value)
-        end
+        if entry then pcall(entry.set, value) end
     end
     return true
 end
@@ -246,14 +234,13 @@ local OX = {Icons = Icons, Config = ConfigManager}
 
 function OX:CreateWindow(cfg)
     cfg = cfg or {}
-    local DESIGN_W, DESIGN_H = 720, 420
-    local MINIMIZED_H = 60
+    local DESIGN_W = cfg.Width or 720
+    local DESIGN_H = cfg.Height or 540
 
     local Window = {
         Tabs = {}, Binds = {}, Signals = {}, Corners = {},
         UserScale = 1, MenuKey = cfg.ToggleKeybind or Enum.KeyCode.RightShift,
         Toggled = false, Unloaded = false, DPIScale = 1,
-        Minimized = false, ExpandedHeight = DESIGN_H,
         DraggableElements = {},
     }
     local listening = nil
@@ -355,7 +342,7 @@ function OX:CreateWindow(cfg)
     }, header)
 
     local searchBox = new("TextBox", {
-        Position = UDim2.new(0, 230, 0, 14), Size = UDim2.new(1, -350, 0, 32),
+        Position = UDim2.new(0, 230, 0, 14), Size = UDim2.new(1, -330, 0, 32),
         BackgroundColor3 = T.Panel, PlaceholderText = "Search..",
         PlaceholderColor3 = T.Dim, Text = "", ClearTextOnFocus = false,
         Font = Enum.Font.Gotham, TextSize = 14, TextColor3 = T.Text,
@@ -371,62 +358,6 @@ function OX:CreateWindow(cfg)
     }, header)
     MakeDraggable(main, dragIcon)
     MakeDraggable(main, header)
-
-    local minimizeBtn = new("TextButton", {
-        AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -52, 0, 30),
-        Size = UDim2.fromOffset(28, 28),
-        BackgroundColor3 = T.Panel, Text = "−",
-        Font = Enum.Font.GothamBold, TextSize = 18, TextColor3 = T.Text,
-        AutoButtonColor = false, Parent = header,
-    })
-    corner(minimizeBtn, 6)
-    stroke(minimizeBtn, T.Stroke, 1)
-
-    minimizeBtn.MouseEnter:Connect(function()
-        tween(minimizeBtn, {BackgroundColor3 = T.Elem}, 0.12)
-    end)
-    minimizeBtn.MouseLeave:Connect(function()
-        tween(minimizeBtn, {BackgroundColor3 = T.Panel}, 0.12)
-    end)
-
-    local isAnimating = false
-
-    function Window:Minimize()
-        if Window.Minimized or isAnimating then return end
-        isAnimating = true
-        Window.Minimized = true
-        Window.ExpandedHeight = main.Size.Y.Offset
-        minimizeBtn.Text = "+"
-
-        local tw = TweenService:Create(main,
-            TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            { Size = UDim2.fromOffset(main.Size.X.Offset, MINIMIZED_H) }
-        )
-        tw:Play()
-        tw.Completed:Once(function() isAnimating = false end)
-    end
-
-    function Window:Restore()
-        if not Window.Minimized or isAnimating then return end
-        isAnimating = true
-        Window.Minimized = false
-        minimizeBtn.Text = "−"
-
-        local tw = TweenService:Create(main,
-            TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            { Size = UDim2.fromOffset(main.Size.X.Offset, Window.ExpandedHeight) }
-        )
-        tw:Play()
-        tw.Completed:Once(function() isAnimating = false end)
-    end
-
-    function Window:ToggleMinimize()
-        if Window.Minimized then Window:Restore() else Window:Minimize() end
-    end
-
-    minimizeBtn.MouseButton1Click:Connect(function()
-        Window:ToggleMinimize()
-    end)
 
     local sidebar = new("Frame", {Position = UDim2.fromOffset(0, 60), Size = UDim2.new(0, 200, 1, -60), BackgroundTransparency = 1}, main)
     new("Frame", {
@@ -608,6 +539,7 @@ function OX:CreateWindow(cfg)
 
     MakeDraggable(openBtn, openBtn, function() Window:Toggle() end)
     table.insert(Window.DraggableElements, openBtn)
+    Window.OpenButton = openBtn
 
     function Window:SetToggleText(text)
         openBtnText.Text = text
@@ -650,7 +582,7 @@ function OX:CreateWindow(cfg)
         new("UIListLayout", {Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder}, t)
 
         if title and title ~= "" then
-            local tl = new("TextLabel", {
+            new("TextLabel", {
                 Size = UDim2.fromOffset(0, 18), AutomaticSize = Enum.AutomaticSize.X,
                 BackgroundTransparency = 1, Text = title,
                 Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = T.Text,
@@ -658,7 +590,7 @@ function OX:CreateWindow(cfg)
             }, t)
         end
         if desc and desc ~= "" then
-            local dl = new("TextLabel", {
+            new("TextLabel", {
                 Size = UDim2.fromOffset(0, 16), AutomaticSize = Enum.AutomaticSize.X,
                 BackgroundTransparency = 1, Text = desc,
                 Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = T.Dim,
@@ -770,21 +702,185 @@ function OX:CreateWindow(cfg)
         end
     end))
 
-    function Window:AddDraggableButton(text, callback, excludeScaling, excludeDragging)
-        local btn = new("TextButton", {
-            AnchorPoint = Vector2.new(0, 0),
-            Position = UDim2.fromOffset(6, 6),
-            Size = UDim2.fromOffset(0, 0), AutomaticSize = Enum.AutomaticSize.XY,
-            BackgroundColor3 = T.BG, Text = text or "Button",
-            Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = T.Text,
-            AutoButtonColor = false, ZIndex = 100, Parent = gui,
+    Window.ActivePopup = nil
+
+    function Window:ShowDropdownPopup(dd)
+        if not dd then return end
+        if Window.ActivePopup then
+            pcall(function() Window.ActivePopup:Destroy() end)
+            Window.ActivePopup = nil
+        end
+
+        local Overlay = new("TextButton", {
+            Size = UDim2.fromScale(1, 1),
+            BackgroundColor3 = T.Dark,
+            BackgroundTransparency = 0.4,
+            Text = "",
+            AutoButtonColor = false,
+            BorderSizePixel = 0,
+            ZIndex = 9000,
+            Parent = gui,
         })
-        corner(btn, 6); stroke(btn, T.Text, 2); pad(btn, 10, 6, 10, 6)
 
-        MakeDraggable(btn, btn, callback)
-        table.insert(Window.DraggableElements, btn)
+        local Panel = new("Frame", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromScale(0.78, 0.72),
+            BackgroundColor3 = T.BG,
+            BorderSizePixel = 0,
+            ZIndex = 9001,
+            Parent = Overlay,
+        })
+        corner(Panel, 10); stroke(Panel)
 
-        return { Button = btn, SetText = function(self, t) btn.Text = t end }
+        new("TextLabel", {
+            Position = UDim2.fromOffset(16, 12),
+            Size = UDim2.new(1, -70, 0, 28),
+            BackgroundTransparency = 1,
+            Text = (dd.Text or dd.Name or "Select"),
+            Font = Enum.Font.GothamBold,
+            TextSize = 16,
+            TextColor3 = T.Text,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 9002,
+        }, Panel)
+
+        local Close = new("TextButton", {
+            AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.new(1, -12, 0, 12),
+            Size = UDim2.fromOffset(28, 28),
+            BackgroundColor3 = T.Red,
+            Text = "X",
+            Font = Enum.Font.GothamBold,
+            TextSize = 14,
+            TextColor3 = T.White,
+            AutoButtonColor = false,
+            ZIndex = 9002,
+            Parent = Panel,
+        })
+        corner(Close, 6)
+
+        local Scroll = new("ScrollingFrame", {
+            Position = UDim2.fromOffset(12, 52),
+            Size = UDim2.new(1, -24, 1, -66),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            ScrollBarThickness = 4,
+            ScrollBarImageColor3 = T.Stroke,
+            CanvasSize = UDim2.new(),
+            AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            ZIndex = 9002,
+            Parent = Panel,
+        })
+        new("UIListLayout", {Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder}, Scroll)
+
+        local function closePopup()
+            if Window.ActivePopup == Overlay then Window.ActivePopup = nil end
+            pcall(function() Overlay:Destroy() end)
+        end
+
+        Close.MouseButton1Click:Connect(closePopup)
+        Overlay.MouseButton1Click:Connect(closePopup)
+
+        local isMulti = dd.Multi
+
+        local itemButtons = {}
+        local function updateVisual()
+            local value = dd:Get()
+            for name, btn in pairs(itemButtons) do
+                local isSelected
+                if isMulti then
+                    isSelected = type(value) == "table" and value[name] == true
+                else
+                    isSelected = value == name
+                end
+                btn.BackgroundTransparency = isSelected and 0 or 1
+                btn.TextTransparency = isSelected and 0 or 0.45
+            end
+        end
+
+        local rawValues = dd.RawValues or {}
+        if #rawValues == 0 and dd.Values then
+            for _, v in ipairs(dd.Values) do table.insert(rawValues, v) end
+        end
+
+        for i, name in ipairs(rawValues) do
+            local btn = new("TextButton", {
+                Size = UDim2.new(1, -8, 0, 34),
+                BackgroundColor3 = T.Sel,
+                BackgroundTransparency = 1,
+                Text = tostring(name),
+                Font = Enum.Font.Gotham,
+                TextSize = 14,
+                TextColor3 = T.Text,
+                TextTransparency = 0.45,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                AutoButtonColor = false,
+                LayoutOrder = i,
+                ZIndex = 9003,
+                Parent = Scroll,
+            })
+            pad(btn, 14, 0, 14, 0)
+            corner(btn, 6)
+
+            btn.MouseEnter:Connect(function()
+                if btn.BackgroundTransparency == 0 then return end
+                btn.BackgroundTransparency = 0.7
+            end)
+            btn.MouseLeave:Connect(function() updateVisual() end)
+
+            btn.MouseButton1Click:Connect(function()
+                if isMulti then
+                    local cur = dd:Get()
+                    local newValue = {}
+                    for k, v in pairs(cur or {}) do newValue[k] = v end
+                    if newValue[name] then newValue[name] = nil
+                    else newValue[name] = true end
+                    dd:Set(newValue)
+                else
+                    dd:Set(name)
+                end
+                updateVisual()
+            end)
+
+            itemButtons[name] = btn
+        end
+
+        updateVisual()
+        Window.ActivePopup = Overlay
+    end
+
+    function Window:AddPopupButton(dd)
+        if not dd or not dd.Display then return end
+        local display = dd.Display
+        local top = display.Parent
+        if not top then return end
+
+        local popupBtn = new("TextButton", {
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -138, 0.5, 0),
+            Size = UDim2.fromOffset(20, 21),
+            BackgroundColor3 = T.Elem,
+            Text = "▣",
+            Font = Enum.Font.GothamBold,
+            TextSize = 12,
+            TextColor3 = T.Text,
+            AutoButtonColor = false,
+            ZIndex = 4,
+            Parent = top,
+        })
+        corner(popupBtn, 6); stroke(popupBtn, T.Stroke, 1)
+
+        popupBtn.MouseEnter:Connect(function()
+            tween(popupBtn, {BackgroundColor3 = T.Sel}, 0.1)
+        end)
+        popupBtn.MouseLeave:Connect(function()
+            tween(popupBtn, {BackgroundColor3 = T.Elem}, 0.1)
+        end)
+
+        popupBtn.MouseButton1Click:Connect(function()
+            Window:ShowDropdownPopup(dd)
+        end)
     end
 
     function Window:AddTab(name, icon)
@@ -1063,20 +1159,21 @@ function OX:CreateWindow(cfg)
                     TextSize = 14, TextColor3 = T.Text, AutoButtonColor = true, ZIndex = 3,
                 }, Section.Content)
                 corner(btn, 6)
-                if o.Risky then
-                    btn.TextColor3 = T.Red
-                end
+                if o.Risky then btn.TextColor3 = T.Red end
                 btn.MouseButton1Click:Connect(function() SafeCallback(o.Callback or o.Func) end)
                 register(o.Text or o.Name or "Button", btn)
             end
 
             function Section:AddLabel(text)
                 local l = new("TextLabel", {
-                    Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 0),
+                    AutomaticSize = Enum.AutomaticSize.Y,
+                    BackgroundTransparency = 1,
                     Text = text, Font = Enum.Font.Gotham, TextSize = 13,
                     TextColor3 = T.Dim, TextXAlignment = Enum.TextXAlignment.Left,
                     TextWrapped = true, ZIndex = 3,
                 }, Section.Content)
+                pad(l, 0, 2, 0, 2)
                 register(text, l)
                 return {
                     SetText = function(self, t) l.Text = t end,
@@ -1119,7 +1216,7 @@ function OX:CreateWindow(cfg)
 
                 local top = new("Frame", {Size = UDim2.new(1, 0, 0, 34), BackgroundTransparency = 1, LayoutOrder = 0, ZIndex = 3}, root)
                 new("TextLabel", {
-                    Size = UDim2.new(1, -140, 1, 0), BackgroundTransparency = 1,
+                    Size = UDim2.new(1, -180, 1, 0), BackgroundTransparency = 1,
                     Text = o.Text or o.Name or "Dropdown", Font = Enum.Font.Gotham,
                     TextSize = 14, TextColor3 = T.Dim,
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -1296,11 +1393,15 @@ function OX:CreateWindow(cfg)
                 register(o.Text or o.Name or "Dropdown", root)
 
                 local obj = {}
-                obj.Value = nil
-                function obj:Get()
-                    obj.Value = getValue()
-                    return obj.Value
-                end
+                obj.Display = display
+                obj.Menu = Menu
+                obj.Multi = multi
+                obj.Values = options
+                obj.RawValues = options
+                obj.Text = o.Text or o.Name or "Dropdown"
+                obj.Name = o.Text or o.Name or "Dropdown"
+
+                function obj:Get() return getValue() end
                 function obj:Set(v, silent)
                     if multi then
                         value = {}
@@ -1315,6 +1416,8 @@ function OX:CreateWindow(cfg)
                 function obj:SetValue(v) obj:Set(v) end
                 function obj:Refresh(newOptions)
                     options = newOptions or {}
+                    obj.Values = options
+                    obj.RawValues = options
                     value = multi and {} or nil
                     build()
                     refreshDisplay()
