@@ -1,8 +1,8 @@
 local cloneref = (cloneref or clonereference or function(i) return i end)
 local Players = cloneref(game:GetService("Players"))
 local UIS = cloneref(game:GetService("UserInputService"))
-local TweenService = cloneref(game:GetService("TweenService"))
 local RunService = cloneref(game:GetService("RunService"))
+local TweenService = cloneref(game:GetService("TweenService"))
 local CoreGui = cloneref(game:GetService("CoreGui"))
 local HttpService = game:GetService("HttpService")
 
@@ -16,9 +16,7 @@ local gethui = gethui or function() return CoreGui end
 local CONFIG_ROOT = "YutaHub"
 local DEFAULT_MAP = "Default"
 
-if makefolder and not isfolder(CONFIG_ROOT) then
-    pcall(makefolder, CONFIG_ROOT)
-end
+if makefolder and not isfolder(CONFIG_ROOT) then pcall(makefolder, CONFIG_ROOT) end
 
 local T = {
     BG = Color3.fromRGB(14, 14, 17),
@@ -45,10 +43,7 @@ end
 local function corner(o, r) return new("UICorner", {CornerRadius = UDim.new(0, r)}, o) end
 local function stroke(o, c, t) return new("UIStroke", {Color = c or T.Stroke, Thickness = t or 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border}, o) end
 local function pad(o, l, t, r, b)
-    return new("UIPadding", {
-        PaddingLeft = UDim.new(0, l), PaddingTop = UDim.new(0, t),
-        PaddingRight = UDim.new(0, r), PaddingBottom = UDim.new(0, b),
-    }, o)
+    return new("UIPadding", {PaddingLeft = UDim.new(0, l), PaddingTop = UDim.new(0, t), PaddingRight = UDim.new(0, r), PaddingBottom = UDim.new(0, b)}, o)
 end
 local function tween(o, props, t)
     TweenService:Create(o, TweenInfo.new(t or 0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
@@ -156,13 +151,8 @@ function ConfigManager.SetMap(mapName)
     ConfigManager.RefreshList()
 end
 
-function ConfigManager.GetFolder()
-    return CONFIG_ROOT .. "/" .. ConfigManager.MapName
-end
-
-function ConfigManager.GetPath(configName)
-    return ConfigManager.GetFolder() .. "/" .. configName .. ".json"
-end
+function ConfigManager.GetFolder() return CONFIG_ROOT .. "/" .. ConfigManager.MapName end
+function ConfigManager.GetPath(configName) return ConfigManager.GetFolder() .. "/" .. configName .. ".json" end
 
 function ConfigManager.Register(flag, entry)
     if not flag or flag == "" then return end
@@ -179,9 +169,7 @@ function ConfigManager.Save(configName)
         local ok, value = pcall(entry.get)
         if ok and value ~= nil then data[flag] = value end
     end
-    local ok, err = pcall(function()
-        writefile(ConfigManager.GetPath(configName), HttpService:JSONEncode(data))
-    end)
+    local ok, err = pcall(function() writefile(ConfigManager.GetPath(configName), HttpService:JSONEncode(data)) end)
     if ok then ConfigManager.RefreshList() end
     return ok, err
 end
@@ -241,7 +229,8 @@ function OX:CreateWindow(cfg)
         Tabs = {}, Binds = {}, Signals = {}, Corners = {},
         UserScale = 1, MenuKey = cfg.ToggleKeybind or Enum.KeyCode.RightShift,
         Toggled = false, Unloaded = false, DPIScale = 1,
-        DraggableElements = {},
+        DraggableElements = {}, CantDragForced = false,
+        ShowCustomCursor = cfg.ShowCustomCursor ~= false,
     }
     local listening = nil
 
@@ -259,6 +248,72 @@ function OX:CreateWindow(cfg)
     pcall(function() gui.Parent = gethui() end)
     if not gui.Parent then gui.Parent = PG end
     Window.ScreenGui = gui
+
+    local OriginalMouseIconEnabled = UIS.MouseIconEnabled
+
+    local Cursor = new("Frame", {
+        Name = "OX_Cursor",
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundTransparency = 1,
+        Size = UDim2.fromOffset(1, 1),
+        Visible = false,
+        ZIndex = 99999,
+        Parent = gui,
+    })
+    local CursorCross = new("Frame", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundTransparency = 1,
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.fromOffset(11, 11),
+        Parent = Cursor,
+    })
+    new("Frame", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundColor3 = T.Dark,
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.new(1, 0, 0, 3),
+        ZIndex = 1,
+        Parent = CursorCross,
+    })
+    new("Frame", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundColor3 = T.White,
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.new(1, -2, 0, 1),
+        ZIndex = 2,
+        Parent = CursorCross,
+    })
+    new("Frame", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundColor3 = T.Dark,
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.new(0, 3, 1, 0),
+        ZIndex = 1,
+        Parent = CursorCross,
+    })
+    new("Frame", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundColor3 = T.White,
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.new(0, 1, 1, -2),
+        ZIndex = 2,
+        Parent = CursorCross,
+    })
+
+    local cursorBindName = "OX_CursorBind_" .. tostring(math.random(1, 99999))
+    local function updateCursor()
+        if Window.ShowCustomCursor and Window.Toggled then
+            UIS.MouseIconEnabled = false
+            Cursor.Position = UDim2.fromOffset(Mouse.X, Mouse.Y)
+            Cursor.Visible = true
+        else
+            UIS.MouseIconEnabled = OriginalMouseIconEnabled
+            Cursor.Visible = false
+        end
+    end
+    pcall(function()
+        RunService:BindToRenderStep(cursorBindName, Enum.RenderPriority.Last.Value, updateCursor)
+    end)
 
     local function MouseIsOverFrame(Frame, pos)
         pos = pos or Vector2.new(Mouse.X, Mouse.Y)
@@ -493,11 +548,13 @@ function OX:CreateWindow(cfg)
     function Window:SetVisible(v)
         main.Visible = v
         Window.Toggled = v
+        updateCursor()
     end
 
     function Window:Toggle()
         Window.Toggled = not Window.Toggled
         main.Visible = Window.Toggled
+        updateCursor()
     end
 
     local openBtn = new("TextButton", {
@@ -564,12 +621,9 @@ function OX:CreateWindow(cfg)
     function Window:Notify(arg1, arg2, arg3)
         local title, desc, dur
         if type(arg1) == "table" then
-            title = arg1.Title
-            desc = arg1.Description
-            dur = arg1.Time or 3
+            title = arg1.Title; desc = arg1.Description; dur = arg1.Time or 3
         else
-            title = arg1
-            dur = arg2 or 2
+            title = arg1; dur = arg2 or 2
         end
 
         if toast and toast.Parent then toast:Destroy() end
@@ -613,6 +667,8 @@ function OX:CreateWindow(cfg)
 
     function Window:Destroy()
         Window.Unloaded = true
+        pcall(function() RunService:UnbindFromRenderStep(cursorBindName) end)
+        pcall(function() UIS.MouseIconEnabled = OriginalMouseIconEnabled end)
         for _, c in ipairs(Window.Signals) do
             if c and c.Connected then c:Disconnect() end
         end
@@ -632,9 +688,7 @@ function OX:CreateWindow(cfg)
         return nil
     end
 
-    function Window:SetMenuKey(key)
-        Window.MenuKey = key
-    end
+    function Window:SetMenuKey(key) Window.MenuKey = key end
 
     GiveSignal(UIS.InputBegan:Connect(function(input, gp)
         if listening then
@@ -676,9 +730,7 @@ function OX:CreateWindow(cfg)
 
         if input.UserInputType == Enum.UserInputType.Keyboard then
             for _, b in ipairs(Window.Binds) do
-                if b.Key and typeof(b.Key) == "EnumItem" and b.Key == input.KeyCode then
-                    b.Fire()
-                end
+                if b.Key and typeof(b.Key) == "EnumItem" and b.Key == input.KeyCode then b.Fire() end
             end
         elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
             for _, b in ipairs(Window.Binds) do
@@ -714,7 +766,7 @@ function OX:CreateWindow(cfg)
         local Overlay = new("TextButton", {
             Size = UDim2.fromScale(1, 1),
             BackgroundColor3 = T.Dark,
-            BackgroundTransparency = 0.4,
+            BackgroundTransparency = 0.5,
             Text = "",
             AutoButtonColor = false,
             BorderSizePixel = 0,
@@ -725,7 +777,7 @@ function OX:CreateWindow(cfg)
         local Panel = new("Frame", {
             AnchorPoint = Vector2.new(0.5, 0.5),
             Position = UDim2.fromScale(0.5, 0.5),
-            Size = UDim2.fromScale(0.78, 0.72),
+            Size = UDim2.fromOffset(400, 380),
             BackgroundColor3 = T.BG,
             BorderSizePixel = 0,
             ZIndex = 9001,
@@ -735,11 +787,11 @@ function OX:CreateWindow(cfg)
 
         new("TextLabel", {
             Position = UDim2.fromOffset(16, 12),
-            Size = UDim2.new(1, -70, 0, 28),
+            Size = UDim2.new(1, -60, 0, 26),
             BackgroundTransparency = 1,
             Text = (dd.Text or dd.Name or "Select"),
             Font = Enum.Font.GothamBold,
-            TextSize = 16,
+            TextSize = 15,
             TextColor3 = T.Text,
             TextXAlignment = Enum.TextXAlignment.Left,
             ZIndex = 9002,
@@ -748,11 +800,11 @@ function OX:CreateWindow(cfg)
         local Close = new("TextButton", {
             AnchorPoint = Vector2.new(1, 0),
             Position = UDim2.new(1, -12, 0, 12),
-            Size = UDim2.fromOffset(28, 28),
+            Size = UDim2.fromOffset(26, 26),
             BackgroundColor3 = T.Red,
             Text = "X",
             Font = Enum.Font.GothamBold,
-            TextSize = 14,
+            TextSize = 13,
             TextColor3 = T.White,
             AutoButtonColor = false,
             ZIndex = 9002,
@@ -761,8 +813,8 @@ function OX:CreateWindow(cfg)
         corner(Close, 6)
 
         local Scroll = new("ScrollingFrame", {
-            Position = UDim2.fromOffset(12, 52),
-            Size = UDim2.new(1, -24, 1, -66),
+            Position = UDim2.fromOffset(12, 46),
+            Size = UDim2.new(1, -24, 1, -58),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             ScrollBarThickness = 4,
@@ -772,7 +824,7 @@ function OX:CreateWindow(cfg)
             ZIndex = 9002,
             Parent = Panel,
         })
-        new("UIListLayout", {Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder}, Scroll)
+        new("UIListLayout", {Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder}, Scroll)
 
         local function closePopup()
             if Window.ActivePopup == Overlay then Window.ActivePopup = nil end
@@ -783,8 +835,8 @@ function OX:CreateWindow(cfg)
         Overlay.MouseButton1Click:Connect(closePopup)
 
         local isMulti = dd.Multi
-
         local itemButtons = {}
+
         local function updateVisual()
             local value = dd:Get()
             for name, btn in pairs(itemButtons) do
@@ -799,19 +851,15 @@ function OX:CreateWindow(cfg)
             end
         end
 
-        local rawValues = dd.RawValues or {}
-        if #rawValues == 0 and dd.Values then
-            for _, v in ipairs(dd.Values) do table.insert(rawValues, v) end
-        end
-
+        local rawValues = dd.RawValues or dd.Values or {}
         for i, name in ipairs(rawValues) do
             local btn = new("TextButton", {
-                Size = UDim2.new(1, -8, 0, 34),
+                Size = UDim2.new(1, -6, 0, 30),
                 BackgroundColor3 = T.Sel,
                 BackgroundTransparency = 1,
                 Text = tostring(name),
                 Font = Enum.Font.Gotham,
-                TextSize = 14,
+                TextSize = 13,
                 TextColor3 = T.Text,
                 TextTransparency = 0.45,
                 TextXAlignment = Enum.TextXAlignment.Left,
@@ -820,8 +868,8 @@ function OX:CreateWindow(cfg)
                 ZIndex = 9003,
                 Parent = Scroll,
             })
-            pad(btn, 14, 0, 14, 0)
-            corner(btn, 6)
+            pad(btn, 12, 0, 12, 0)
+            corner(btn, 5)
 
             btn.MouseEnter:Connect(function()
                 if btn.BackgroundTransparency == 0 then return end
@@ -834,8 +882,7 @@ function OX:CreateWindow(cfg)
                     local cur = dd:Get()
                     local newValue = {}
                     for k, v in pairs(cur or {}) do newValue[k] = v end
-                    if newValue[name] then newValue[name] = nil
-                    else newValue[name] = true end
+                    if newValue[name] then newValue[name] = nil else newValue[name] = true end
                     dd:Set(newValue)
                 else
                     dd:Set(name)
@@ -858,18 +905,18 @@ function OX:CreateWindow(cfg)
 
         local popupBtn = new("TextButton", {
             AnchorPoint = Vector2.new(1, 0.5),
-            Position = UDim2.new(1, -138, 0.5, 0),
-            Size = UDim2.fromOffset(20, 21),
+            Position = UDim2.new(1, -40, 0.5, 0),
+            Size = UDim2.fromOffset(18, 18),
             BackgroundColor3 = T.Elem,
-            Text = "▣",
+            Text = "+",
             Font = Enum.Font.GothamBold,
-            TextSize = 12,
+            TextSize = 13,
             TextColor3 = T.Text,
             AutoButtonColor = false,
             ZIndex = 4,
             Parent = top,
         })
-        corner(popupBtn, 6); stroke(popupBtn, T.Stroke, 1)
+        corner(popupBtn, 4); stroke(popupBtn, T.Stroke, 1)
 
         popupBtn.MouseEnter:Connect(function()
             tween(popupBtn, {BackgroundColor3 = T.Sel}, 0.1)
@@ -881,6 +928,9 @@ function OX:CreateWindow(cfg)
         popupBtn.MouseButton1Click:Connect(function()
             Window:ShowDropdownPopup(dd)
         end)
+
+        display.Position = UDim2.new(1, -42, 0.5, 0)
+        display.Size = UDim2.fromOffset(110, 21)
     end
 
     function Window:AddTab(name, icon)
@@ -1359,9 +1409,7 @@ function OX:CreateWindow(cfg)
                 Dropdown.Active = false
 
                 function Dropdown:Open()
-                    if ActiveDropdown and ActiveDropdown ~= Dropdown then
-                        ActiveDropdown:Close()
-                    end
+                    if ActiveDropdown and ActiveDropdown ~= Dropdown then ActiveDropdown:Close() end
                     ActiveDropdown = Dropdown
                     Dropdown.Active = true
                     positionMenu()
