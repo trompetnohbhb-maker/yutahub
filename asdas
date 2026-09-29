@@ -1,0 +1,511 @@
+local SCRIPT_URL = ""  -- <- ISI URL RAW SCRIPT KAMU
+
+if SCRIPT_URL == "" then
+    warn("[AutoHop] SCRIPT_URL kosong. Auto re-execute MATI. Hop tetap jalan tapi harus execute manual tiap server baru.")
+end
+
+if getgenv and getgenv().AUTO_HOP_LOADED then
+    pcall(function() getgenv().AUTO_HOP_UNLOAD() end)
+    task.wait(0.1)
+end
+getgenv().AUTO_HOP_LOADED = true
+
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local TS = game:GetService("TeleportService")
+local RS = game:GetService("ReplicatedStorage")
+local HS = game:GetService("HttpService")
+local LP = Players.LocalPlayer
+
+local FOLDER = "AutoHopWeather"
+local STATE_FILE = FOLDER .. "/state.json"
+if makefolder and isfolder and not isfolder(FOLDER) then pcall(makefolder, FOLDER) end
+
+local function loadState()
+    if not isfile or not isfile(STATE_FILE) then return {} end
+    local ok, d = pcall(function() return HS:JSONDecode(readfile(STATE_FILE)) end)
+    if ok and type(d) == "table" then return d end
+    return {}
+end
+local function saveState(s)
+    if not writefile then return end
+    pcall(function() writefile(STATE_FILE, HS:JSONEncode(s)) end)
+end
+
+local State = loadState()
+State.targetWeather = State.targetWeather or "Luck Event"
+State.attempts = tonumber(State.attempts) or 0
+State.autoHop = false
+State.resumeOnLoad = State.resumeOnLoad == true
+State.pendingResume = State.pendingResume == true
+
+local WEATHER_LIST = { "Luck Event" }
+
+local function getWeatherProperty()
+    local ok, p = pcall(function()
+        local N = require(RS:WaitForChild("Packages"):WaitForChild("Network"))
+        return N.ClientComm.new(RS.Network, false, "WeatherService"):GetProperty("ActiveWeather")
+    end)
+    if ok and p then return p end
+    return nil
+end
+
+local function getWeather()
+    local p = getWeatherProperty()
+    if p then
+        local ok, c = pcall(function() return p:Get() end)
+        if ok and c and c.name then
+            return { name = c.name, startedAt = c.startedAt, endsAt = c.endsAt }
+        end
+    end
+    local sd = RS:FindFirstChild("ServerData")
+    if sd then
+        local raw = sd:GetAttribute("WeatherSnapshotV2") or sd:GetAttribute("ActiveWeathers")
+        if type(raw) == "string" and raw ~= "" then
+            local ok, d = pcall(function() return HS:JSONDecode(raw) end)
+            if ok and type(d) == "table" then
+                local w = d.Weathers or d
+                if type(w) == "table" then
+                    for _, entry in pairs(w) do
+                        if type(entry) == "table" and entry.Type then
+                            return { name = entry.Variant or entry.Type, type = entry.Type, variant = entry.Variant }
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local function weatherMatches(weather, target)
+    if not weather or not target or target == "" then return false end
+    local t = target:lower()
+    for _, c in ipairs({ weather.name, weather.type, weather.variant }) do
+        if c and c ~= "" and tostring(c):lower():find(t, 1, true) then return true end
+    end
+    return false
+end
+
+local function queueReexecute()
+    if SCRIPT_URL == "" then return false end
+    local code = string.format("loadstring(game:HttpGet(%q))()", SCRIPT_URL)
+    if queue_on_teleport then
+        if pcall(function() queue_on_teleport(code) end) then return true end
+    end
+    if syn and syn.queue_on_teleport then
+        if pcall(function() syn.queue_on_teleport(code) end) then return true end
+    end
+    if fluxus and fluxus.queue_on_teleport then
+        if pcall(function() fluxus.queue_on_teleport(code) end) then return true end
+    end
+    return false
+end
+
+local function doHop()
+    State.attempts = State.attempts + 1
+    State.lastHop = os.time()
+    State.pendingResume = State.resumeOnLoad
+    saveState(State)
+    queueReexecute()
+    task.wait(0.5)
+    pcall(function() TS:Teleport(game.PlaceId, LP) end)
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AutoHopWeather"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.DisplayOrder = 100
+pcall(function() if syn and syn.protect_gui then syn.protect_gui(ScreenGui) end end)
+ScreenGui.Parent = LP:WaitForChild("PlayerGui")
+
+local function new(class, props, parent)
+    local inst = Instance.new(class)
+    for k, v in pairs(props or {}) do inst[k] = v end
+    inst.Parent = parent
+    return inst
+end
+
+local Main = new("Frame", {
+    Name = "Main",
+    Size = UDim2.fromOffset(280, 280),
+    Position = UDim2.new(0, 12, 0, 12),
+    BackgroundColor3 = Color3.fromRGB(20, 20, 25),
+    BorderSizePixel = 0,
+}, ScreenGui)
+new("UICorner", { CornerRadius = UDim.new(0, 8) }, Main)
+new("UIStroke", { Color = Color3.fromRGB(80, 80, 100), Thickness = 1 }, Main)
+
+local Header = new("Frame", {
+    Size = UDim2.new(1, 0, 0, 32),
+    BackgroundColor3 = Color3.fromRGB(30, 30, 38),
+    BorderSizePixel = 0,
+}, Main)
+new("UICorner", { CornerRadius = UDim.new(0, 8) }, Header)
+
+new("TextLabel", {
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, -40, 1, 0),
+    Position = UDim2.fromOffset(12, 0),
+    Text = "Auto Hop Weather",
+    TextColor3 = Color3.fromRGB(220, 220, 240),
+    TextSize = 14,
+    Font = Enum.Font.GothamBold,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, Header)
+
+local CloseBtn = new("TextButton", {
+    Size = UDim2.fromOffset(24, 24),
+    Position = UDim2.new(1, -28, 0.5, -12),
+    BackgroundColor3 = Color3.fromRGB(180, 50, 50),
+    Text = "X",
+    TextColor3 = Color3.new(1, 1, 1),
+    TextSize = 12,
+    Font = Enum.Font.GothamBold,
+    BorderSizePixel = 0,
+    AutoButtonColor = false,
+}, Header)
+new("UICorner", { CornerRadius = UDim.new(0, 4) }, CloseBtn)
+
+local function makeDraggable(frame, drag)
+    local dragging, start, initPos = false, nil, nil
+    drag.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            start = input.Position
+            initPos = frame.Position
+        end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - start
+            frame.Position = UDim2.new(
+                initPos.X.Scale, initPos.X.Offset + delta.X,
+                initPos.Y.Scale, initPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+end
+makeDraggable(Main, Header)
+
+new("TextLabel", {
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, -24, 0, 16),
+    Position = UDim2.fromOffset(12, 40),
+    Text = "Target Weather",
+    TextColor3 = Color3.fromRGB(160, 160, 180),
+    TextSize = 12,
+    Font = Enum.Font.Gotham,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, Main)
+
+local TargetBtn = new("TextButton", {
+    Size = UDim2.new(1, -24, 0, 28),
+    Position = UDim2.fromOffset(12, 58),
+    BackgroundColor3 = Color3.fromRGB(40, 40, 52),
+    Text = State.targetWeather,
+    TextColor3 = Color3.fromRGB(220, 220, 240),
+    TextSize = 13,
+    Font = Enum.Font.Gotham,
+    BorderSizePixel = 0,
+    AutoButtonColor = false,
+}, Main)
+new("UICorner", { CornerRadius = UDim.new(0, 4) }, TargetBtn)
+new("UIStroke", { Color = Color3.fromRGB(70, 70, 90) }, TargetBtn)
+
+new("TextLabel", {
+    BackgroundTransparency = 1,
+    AnchorPoint = Vector2.new(1, 0.5),
+    Position = UDim2.new(1, -8, 0.5, 0),
+    Size = UDim2.fromOffset(10, 10),
+    Text = "v",
+    TextColor3 = Color3.fromRGB(160, 160, 180),
+    TextSize = 10,
+    Font = Enum.Font.Gotham,
+}, TargetBtn)
+
+local ResumeToggle = new("TextButton", {
+    Size = UDim2.new(1, -24, 0, 24),
+    Position = UDim2.fromOffset(12, 92),
+    BackgroundColor3 = Color3.fromRGB(40, 40, 52),
+    Text = "",
+    BorderSizePixel = 0,
+    AutoButtonColor = false,
+}, Main)
+new("UICorner", { CornerRadius = UDim.new(0, 4) }, ResumeToggle)
+new("UIStroke", { Color = Color3.fromRGB(70, 70, 90) }, ResumeToggle)
+
+local ResumeCheck = new("Frame", {
+    Size = UDim2.fromOffset(14, 14),
+    Position = UDim2.fromOffset(6, 5),
+    BackgroundColor3 = State.resumeOnLoad and Color3.fromRGB(80, 180, 120) or Color3.fromRGB(30, 30, 38),
+    BorderSizePixel = 0,
+}, ResumeToggle)
+new("UICorner", { CornerRadius = UDim.new(0, 3) }, ResumeCheck)
+new("UIStroke", { Color = Color3.fromRGB(90, 90, 110) }, ResumeCheck)
+
+new("TextLabel", {
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, -28, 1, 0),
+    Position = UDim2.fromOffset(26, 0),
+    Text = "Resume auto-hop setelah hop",
+    TextColor3 = Color3.fromRGB(180, 180, 200),
+    TextSize = 11,
+    Font = Enum.Font.Gotham,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, ResumeToggle)
+
+ResumeToggle.MouseButton1Click:Connect(function()
+    State.resumeOnLoad = not State.resumeOnLoad
+    ResumeCheck.BackgroundColor3 = State.resumeOnLoad and Color3.fromRGB(80, 180, 120) or Color3.fromRGB(30, 30, 38)
+    saveState(State)
+end)
+
+local SourceStatusLabel = new("TextLabel", {
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, -24, 0, 14),
+    Position = UDim2.fromOffset(12, 120),
+    Text = SCRIPT_URL ~= "" and ("Re-execute: ON (" .. SCRIPT_URL:sub(1, 30) .. "...)")
+        or "Re-execute: OFF (set SCRIPT_URL)",
+    TextColor3 = SCRIPT_URL ~= "" and Color3.fromRGB(120, 220, 140) or Color3.fromRGB(240, 180, 120),
+    TextSize = 10,
+    Font = Enum.Font.Code,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextTruncate = Enum.TextTruncate.AtEnd,
+}, Main)
+
+local StatusLabel = new("TextLabel", {
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, -24, 0, 80),
+    Position = UDim2.fromOffset(12, 138),
+    Text = "Status: Idle\nAttempt: " .. State.attempts .. "\nCurrent: -",
+    TextColor3 = Color3.fromRGB(180, 180, 200),
+    TextSize = 12,
+    Font = Enum.Font.Code,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextYAlignment = Enum.TextYAlignment.Top,
+}, Main)
+
+local StartBtn = new("TextButton", {
+    Size = UDim2.new(1, -24, 0, 32),
+    Position = UDim2.new(0, 12, 1, -44),
+    BackgroundColor3 = Color3.fromRGB(80, 180, 120),
+    Text = "START AUTO HOP",
+    TextColor3 = Color3.new(1, 1, 1),
+    TextSize = 13,
+    Font = Enum.Font.GothamBold,
+    BorderSizePixel = 0,
+    AutoButtonColor = false,
+}, Main)
+new("UICorner", { CornerRadius = UDim.new(0, 5) }, StartBtn)
+
+local Dropdown = new("ScrollingFrame", {
+    Size = UDim2.new(1, -24, 0, 0),
+    Position = UDim2.fromOffset(12, 88),
+    BackgroundColor3 = Color3.fromRGB(30, 30, 38),
+    BorderSizePixel = 0,
+    ScrollBarThickness = 3,
+    CanvasSize = UDim2.new(0, 0, 0, 0),
+    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+    Visible = false,
+    ZIndex = 10,
+}, Main)
+new("UICorner", { CornerRadius = UDim.new(0, 4) }, Dropdown)
+new("UIStroke", { Color = Color3.fromRGB(80, 80, 100) }, Dropdown)
+
+local function closeDropdown()
+    Dropdown.Visible = false
+    Dropdown.Size = UDim2.new(1, -24, 0, 0)
+end
+
+local function openDropdown()
+    for _, c in ipairs(Dropdown:GetChildren()) do
+        if c:IsA("TextButton") then c:Destroy() end
+    end
+    local count = 0
+    for _, name in ipairs(WEATHER_LIST) do
+        count = count + 1
+        local item = new("TextButton", {
+            Size = UDim2.new(1, -8, 0, 26),
+            Position = UDim2.fromOffset(4, 4 + (count - 1) * 26),
+            BackgroundColor3 = Color3.fromRGB(50, 50, 65),
+            BackgroundTransparency = 0.3,
+            Text = name,
+            TextColor3 = Color3.fromRGB(220, 220, 240),
+            TextSize = 12,
+            Font = Enum.Font.Gotham,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            BorderSizePixel = 0,
+            AutoButtonColor = false,
+            ZIndex = 11,
+        }, Dropdown)
+        local pad = Instance.new("UIPadding")
+        pad.PaddingLeft = UDim.new(0, 8)
+        pad.Parent = item
+        local cor = Instance.new("UICorner")
+        cor.CornerRadius = UDim.new(0, 3)
+        cor.Parent = item
+        item.MouseEnter:Connect(function() item.BackgroundTransparency = 0 end)
+        item.MouseLeave:Connect(function() item.BackgroundTransparency = 0.3 end)
+        item.MouseButton1Click:Connect(function()
+            State.targetWeather = name
+            State.attempts = 0
+            saveState(State)
+            TargetBtn.Text = name
+            closeDropdown()
+            updateStatus("Idle", "-")
+        end)
+    end
+    Dropdown.Size = UDim2.new(1, -24, 0, math.min(#WEATHER_LIST * 26 + 8, 180))
+    Dropdown.CanvasSize = UDim2.new(0, 0, 0, #WEATHER_LIST * 26 + 8)
+    Dropdown.Visible = true
+end
+
+TargetBtn.MouseButton1Click:Connect(function()
+    if Dropdown.Visible then closeDropdown() else openDropdown() end
+end)
+
+function updateStatus(status, current)
+    StatusLabel.Text = "Status: " .. tostring(status)
+        .. "\nAttempt: " .. tostring(State.attempts)
+        .. "\nCurrent: " .. tostring(current or "-")
+end
+
+local function setColor(col)
+    if col == "green" then
+        StatusLabel.TextColor3 = Color3.fromRGB(120, 220, 140)
+    elseif col == "red" then
+        StatusLabel.TextColor3 = Color3.fromRGB(240, 120, 120)
+    elseif col == "yellow" then
+        StatusLabel.TextColor3 = Color3.fromRGB(240, 220, 120)
+    else
+        StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
+    end
+end
+
+local function notify(title, desc)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = title, Text = desc, Duration = 5,
+        })
+    end)
+end
+
+local running = true
+getgenv().AUTO_HOP_UNLOAD = function()
+    running = false
+    if ScreenGui then ScreenGui:Destroy() end
+    getgenv().AUTO_HOP_LOADED = nil
+end
+
+CloseBtn.MouseButton1Click:Connect(function()
+    State.autoHop = false
+    State.pendingResume = false
+    saveState(State)
+    getgenv().AUTO_HOP_UNLOAD()
+end)
+
+local function stopAutoHop()
+    State.autoHop = false
+    State.pendingResume = false
+    saveState(State)
+    StartBtn.Text = "START AUTO HOP"
+    StartBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 120)
+    updateStatus("Stopped", "-")
+    setColor("default")
+end
+
+local function startAutoHop()
+    State.autoHop = true
+    saveState(State)
+    StartBtn.Text = "STOP"
+    StartBtn.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
+
+    task.spawn(function()
+        while running and State.autoHop do
+            local weather = getWeather()
+            local currentName = weather and weather.name or "(none)"
+            if weather and weatherMatches(weather, State.targetWeather) then
+                setColor("green")
+                updateStatus("FOUND! " .. currentName, currentName)
+                notify("Auto Hop", "Found " .. State.targetWeather .. "!")
+                State.autoHop = false
+                State.pendingResume = false
+                saveState(State)
+                StartBtn.Text = "START AUTO HOP"
+                StartBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 120)
+                break
+            end
+
+            setColor("yellow")
+            updateStatus("Hopping...", currentName)
+            task.wait(1.5)
+
+            if not running or not State.autoHop then break end
+            doHop()
+            return
+        end
+    end)
+end
+
+StartBtn.MouseButton1Click:Connect(function()
+    if State.autoHop then stopAutoHop() else startAutoHop() end
+end)
+
+task.spawn(function()
+    task.wait(1.5)
+    local weather = getWeather()
+    local currentName = weather and weather.name or "(none)"
+
+    if weather and weatherMatches(weather, State.targetWeather) then
+        setColor("green")
+        updateStatus("ALREADY HERE!", currentName)
+        notify("Auto Hop", State.targetWeather .. " sudah aktif!")
+        State.attempts = 0
+        State.autoHop = false
+        State.pendingResume = false
+        saveState(State)
+        return
+    end
+
+    if State.pendingResume and State.resumeOnLoad and SCRIPT_URL ~= "" then
+        updateStatus("Resuming...", currentName)
+        State.pendingResume = false
+        saveState(State)
+        task.wait(0.5)
+        startAutoHop()
+    else
+        updateStatus("Ready", currentName)
+        State.pendingResume = false
+        saveState(State)
+    end
+end)
+
+task.spawn(function()
+    while running do
+        task.wait(3)
+        if not running then break end
+        pcall(function()
+            local w = getWeather()
+            local n = w and w.name or "-"
+            if not State.autoHop then
+                StatusLabel.Text = "Status: Ready\nAttempt: " .. State.attempts .. "\nCurrent: " .. n
+            end
+        end)
+    end
+end)
+
+notify("Auto Hop Weather", "Loaded! Target: " .. State.targetWeather)
+if SCRIPT_URL == "" then
+    task.wait(1)
+    notify("Auto Hop", "SCRIPT_URL kosong — auto re-execute MATI. Execute manual tiap server.")
+end
