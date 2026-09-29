@@ -1,4 +1,5 @@
-local SCRIPT_URL = ""  -- <- ISI URL RAW SCRIPT KAMU
+local SCRIPT_URL = "
+loadstring(game:HttpGet("https://raw.githubusercontent.com/trompetnohbhb-maker/yutahub/refs/heads/main/asdas"))()"  -- <- ISI URL RAW SCRIPT KAMU
 
 if SCRIPT_URL == "" then
     warn("[AutoHop] SCRIPT_URL kosong. Auto re-execute MATI. Hop tetap jalan tapi harus execute manual tiap server baru.")
