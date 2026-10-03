@@ -553,7 +553,6 @@ function Chloex:Window(GuiConfig)
     GuiConfig.Version      = GuiConfig.Version or 1
 
     CURRENT_VERSION        = GuiConfig.Version
-    LoadConfigFromFile()
 
     local GuiFunc = {}
 
@@ -880,8 +879,8 @@ function Chloex:Window(GuiConfig)
         Title.Position = UDim2.new(0, 0, 0, 4)
         Title.BackgroundTransparency = 1
         Title.Font = Enum.Font.GothamBold
-        Title.Text = "Kamu yakin mau keluar?"
-        Title.TextSize = 18
+        Title.Text = "Are you sure you want to exit?"
+        Title.TextSize = 16
         Title.TextColor3 = Color3.fromRGB(255, 255, 255)
         Title.ZIndex = 52
         Title.Parent = Dialog
@@ -891,7 +890,7 @@ function Chloex:Window(GuiConfig)
         Message.Position = UDim2.new(0, 10, 0, 30)
         Message.BackgroundTransparency = 1
         Message.Font = Enum.Font.Gotham
-        Message.Text = "Kamu yakin mau keluar?\nNanti kamu tidak bisa buka lagi"
+        Message.Text = "You won't be able to reopen this window after closing it."
         Message.TextSize = 14
         Message.TextColor3 = Color3.fromRGB(200, 200, 200)
         Message.TextWrapped = true
@@ -1982,15 +1981,17 @@ function Chloex:Window(GuiConfig)
                     ToggleFunc:Set(ToggleFunc.Value)
                 end)
 
-                function ToggleFunc:Set(Value)
+                function ToggleFunc:Set(Value, silent)
                     if typeof(ToggleConfig.Callback) == "function" then
                         local ok, err = pcall(function()
                             ToggleConfig.Callback(Value)
                         end)
                         if not ok then warn("Toggle Callback error:", err) end
                     end
-                    ConfigData[configKey] = Value
-                    SaveConfig()
+                    if not silent then
+                        ConfigData[configKey] = Value
+                        SaveConfig()
+                    end
                     if Value then
                         TweenService:Create(ToggleTitle, TweenInfo.new(0.2), { TextColor3 = GuiConfig.Color }):Play()
                         TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 15, 0, 0) })
@@ -2178,7 +2179,7 @@ function Chloex:Window(GuiConfig)
                     end
                     return Result
                 end
-                function SliderFunc:Set(Value)
+                function SliderFunc:Set(Value, silent)
                     Value = math.clamp(Round(Value, SliderConfig.Increment), SliderConfig.Min, SliderConfig.Max)
                     SliderFunc.Value = Value
                     TextBox.Text = tostring(Value)
@@ -2189,8 +2190,10 @@ function Chloex:Window(GuiConfig)
                     ):Play()
 
                     SliderConfig.Callback(Value)
-                    ConfigData[configKey] = Value
-                    SaveConfig()
+                    if not silent then
+                        ConfigData[configKey] = Value
+                        SaveConfig()
+                    end
                 end
 
                 SliderFrame.InputBegan:Connect(function(Input)
@@ -2360,12 +2363,14 @@ function Chloex:Window(GuiConfig)
                 InputTextBox.Size = UDim2.new(1, -10, 1, -8)
                 InputTextBox.Name = "InputTextBox"
                 InputTextBox.Parent = InputFrame
-                function InputFunc:Set(Value)
+                function InputFunc:Set(Value, silent)
                     InputTextBox.Text = Value
                     InputFunc.Value = Value
                     InputConfig.Callback(Value)
-                    ConfigData[configKey] = Value
-                    SaveConfig()
+                    if not silent then
+                        ConfigData[configKey] = Value
+                        SaveConfig()
+                    end
                 end
 
                 InputFunc:Set(InputFunc.Value)
@@ -2630,15 +2635,17 @@ function Chloex:Window(GuiConfig)
                     end)
                 end
 
-                function DropdownFunc:Set(Value)
+                function DropdownFunc:Set(Value, silent)
                     if DropdownConfig.Multi then
                         DropdownFunc.Value = type(Value) == "table" and Value or {}
                     else
                         DropdownFunc.Value = (type(Value) == "table" and Value[1]) or Value
                     end
 
-                    ConfigData[configKey] = DropdownFunc.Value
-                    SaveConfig()
+                    if not silent then
+                        ConfigData[configKey] = DropdownFunc.Value
+                        SaveConfig()
+                    end
 
                     local texts = {}
                     for _, Drop in ScrollSelect:GetChildren() do
@@ -2694,7 +2701,7 @@ function Chloex:Window(GuiConfig)
                         DropdownFunc:AddOption(v)
                     end
                     DropdownFunc.Options = newList
-                    DropdownFunc:Set(selecting)
+                    DropdownFunc:Set(selecting, true)
                 end
 
                 DropdownFunc:SetValues(DropdownFunc.Options, DropdownFunc.Value)
@@ -2775,6 +2782,33 @@ function Chloex:Window(GuiConfig)
         local safeName = TabConfig.Name:gsub("%s+", "_")
         _G[safeName] = Sections
         return Sections
+    end
+
+    local AutoLoadEnabled = true
+    if type(ConfigData._autoLoad) == "boolean" then
+        AutoLoadEnabled = ConfigData._autoLoad
+    end
+
+    function GuiFunc:SetAutoLoad(v)
+        AutoLoadEnabled = v and true or false
+        ConfigData._autoLoad = AutoLoadEnabled
+        if CURRENT_VERSION then SaveConfig() end
+    end
+
+    function GuiFunc:GetAutoLoad()
+        return AutoLoadEnabled
+    end
+
+    function GuiFunc:ApplyConfig()
+        LoadConfigFromFile()
+        LoadConfigElements()
+    end
+
+    if AutoLoadEnabled then
+        task.defer(function()
+            LoadConfigFromFile()
+            LoadConfigElements()
+        end)
     end
 
     return Tabs
