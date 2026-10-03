@@ -554,6 +554,26 @@ function Chloex:Window(GuiConfig)
 
     CURRENT_VERSION        = GuiConfig.Version
 
+    local AutoLoadEnabled = true
+    do
+        local path = getConfigPath(CurrentConfigName)
+        if isfile and isfile(path) then
+            local ok, res = pcall(function()
+                return HttpService:JSONDecode(readfile(path))
+            end)
+            if ok and type(res) == "table" then
+                if type(res._autoLoad) == "boolean" then
+                    AutoLoadEnabled = res._autoLoad
+                end
+                if AutoLoadEnabled then
+                    ConfigData = res
+                else
+                    ConfigData = { _autoLoad = false }
+                end
+            end
+        end
+    end
+
     local GuiFunc = {}
 
     local Chloeex = Instance.new("ScreenGui");
@@ -2784,31 +2804,25 @@ function Chloex:Window(GuiConfig)
         return Sections
     end
 
-    local AutoLoadEnabled = true
-    if type(ConfigData._autoLoad) == "boolean" then
-        AutoLoadEnabled = ConfigData._autoLoad
-    end
-
     function GuiFunc:SetAutoLoad(v)
-        AutoLoadEnabled = v and true or false
-        ConfigData._autoLoad = AutoLoadEnabled
+        local newValue = v and true or false
+        ConfigData._autoLoad = newValue
         if CURRENT_VERSION then SaveConfig() end
+        if newValue then
+            LoadConfigFromFile()
+            LoadConfigElements()
+        end
     end
 
     function GuiFunc:GetAutoLoad()
-        return AutoLoadEnabled
+        local v = ConfigData._autoLoad
+        if type(v) ~= "boolean" then return true end
+        return v
     end
 
     function GuiFunc:ApplyConfig()
         LoadConfigFromFile()
         LoadConfigElements()
-    end
-
-    if AutoLoadEnabled then
-        task.defer(function()
-            LoadConfigFromFile()
-            LoadConfigElements()
-        end)
     end
 
     return Tabs
