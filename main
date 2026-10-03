@@ -49,6 +49,19 @@ function SaveConfig()
     pcall(writefile, getConfigPath(CurrentConfigName), HttpService:JSONEncode(ConfigData))
 end
 
+function SaveAsConfig(name)
+    name = tostring(name or "")
+    if name == "" then return false end
+    if type(ConfigData) ~= "table" then ConfigData = {} end
+    CurrentConfigName = name
+    ConfigData._version = CURRENT_VERSION
+    ConfigData._name = CurrentConfigName
+    if writefile then
+        pcall(writefile, getConfigPath(CurrentConfigName), HttpService:JSONEncode(ConfigData))
+    end
+    return true
+end
+
 function LoadConfigFromFile()
     local path = getConfigPath(CurrentConfigName)
     local loaded = false
@@ -2785,6 +2798,7 @@ Chloex.Config = {
     GetPath = getConfigPath,
     List = listConfigs,
     Save = SaveConfig,
+    SaveAs = SaveAsConfig,
     Load = LoadConfigFromFile,
     LoadElements = LoadConfigElements,
     SetActive = SetActiveConfig,
