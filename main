@@ -114,19 +114,6 @@ function GetConfigFolder()
     return GAME_FOLDER
 end
 
-do
-    local configs = listConfigs()
-    if #configs > 0 then
-        local chosen = nil
-        for _, c in ipairs(configs) do
-            if c == "default" then chosen = c break end
-        end
-        if not chosen then chosen = configs[1] end
-        CurrentConfigName = chosen
-        LoadConfigFromFile()
-    end
-end
-
 local Icons = {
     player    = "rbxassetid://12120698352",
     web       = "rbxassetid://137601480983962",
@@ -553,26 +540,6 @@ function Chloex:Window(GuiConfig)
     GuiConfig.Version      = GuiConfig.Version or 1
 
     CURRENT_VERSION        = GuiConfig.Version
-
-    local AutoLoadEnabled = true
-    do
-        local path = getConfigPath(CurrentConfigName)
-        if isfile and isfile(path) then
-            local ok, res = pcall(function()
-                return HttpService:JSONDecode(readfile(path))
-            end)
-            if ok and type(res) == "table" then
-                if type(res._autoLoad) == "boolean" then
-                    AutoLoadEnabled = res._autoLoad
-                end
-                if AutoLoadEnabled then
-                    ConfigData = res
-                else
-                    ConfigData = { _autoLoad = false }
-                end
-            end
-        end
-    end
 
     local GuiFunc = {}
 
@@ -2802,22 +2769,6 @@ function Chloex:Window(GuiConfig)
         local safeName = TabConfig.Name:gsub("%s+", "_")
         _G[safeName] = Sections
         return Sections
-    end
-
-    function GuiFunc:SetAutoLoad(v)
-        local newValue = v and true or false
-        ConfigData._autoLoad = newValue
-        if CURRENT_VERSION then SaveConfig() end
-        if newValue then
-            LoadConfigFromFile()
-            LoadConfigElements()
-        end
-    end
-
-    function GuiFunc:GetAutoLoad()
-        local v = ConfigData._autoLoad
-        if type(v) ~= "boolean" then return true end
-        return v
     end
 
     function GuiFunc:ApplyConfig()
