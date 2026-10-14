@@ -1,3 +1,21 @@
+local function ensureIdentity()
+    local fn = setthreadidentity or setidentity or set_thread_identity
+    if fn then pcall(fn, 8) end
+end
+
+local function SafeTween(obj, info, props)
+    ensureIdentity()
+    local ok = pcall(function()
+        TweenService:Create(obj, info, props):Play()
+    end)
+    if not ok then
+        -- fallback: set langsung tanpa animasi
+        for k, v in pairs(props) do
+            pcall(function() obj[k] = v end)
+        end
+    end
+end
+
 local HttpService = game:GetService("HttpService")
 local MarketplaceService = game:GetService("MarketplaceService")
 
